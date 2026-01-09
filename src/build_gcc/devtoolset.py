@@ -8,8 +8,8 @@ from typing import Tuple, Optional
 
 from sys_detection import is_linux
 
-from build_clang.constants import DEVTOOLSET_ENV_VARS
-from build_clang.helpers import which
+from build_gcc.constants import DEVTOOLSET_ENV_VARS
+from build_gcc.helpers import which
 
 
 GCC_VERSIONS = [14, 13, 12, 11, 10, 9]

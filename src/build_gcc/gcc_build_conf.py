@@ -6,40 +6,33 @@ import sys_detection
 
 from typing import Optional
 
-from build_clang.helpers import (
+from build_gcc.helpers import (
     get_current_timestamp_str,
     get_major_version,
 )
-from build_clang.constants import (
+from build_gcc.constants import (
     BUILD_DIR_SUFFIX_WITH_SEPARATOR,
-    YB_LLVM_ARCHIVE_NAME_PREFIX,
+    YB_GCC_ARCHIVE_NAME_PREFIX,
     GIT_SHA1_PLACEHOLDER_STR,
     NAME_COMPONENT_SEPARATOR,
-    LLVM_PROJECT_CLONE_REL_PATH,
+    GCC_CLONE_REL_PATH,
     GIT_SHA1_PREFIX_LENGTH,
 )
 
 
-class ClangBuildConf:
+class GCCBuildConf:
     install_parent_dir: str
     version: str
-    llvm_major_version: int
+    gcc_major_version: int
     user_specified_suffix: Optional[str]
     skip_auto_suffix: bool
     git_sha1_prefix: Optional[str]
 
-    cmake_executable_path: str
-
-    # Whether to delete CMake build directory before the build.
+    # Whether to delete build directory before the build.
     clean_build: bool
 
     # A timestamp string for when this confugration was created.
     build_start_timestamp_str: str
-
-    # Whether to use our custom compiler wrapper script instead of the real compiler.
-    use_compiler_wrapper: bool
-
-    lto: bool
 
     unix_timestamp_for_suffix: Optional[str]
 
@@ -49,8 +42,6 @@ class ClangBuildConf:
 
     target_arch: str
 
-    openmp_enabled: bool
-
     def __init__(
             self,
             install_parent_dir: str,
@@ -58,26 +49,19 @@ class ClangBuildConf:
             user_specified_suffix: Optional[str],
             skip_auto_suffix: bool,
             clean_build: bool,
-            use_compiler_wrapper: bool,
-            use_compiler_rt: bool,
             existing_build_dir: Optional[str],
             parallelism: Optional[int],
-            target_arch: str,
-            openmp_enabled: bool) -> None:
+            target_arch: str) -> None:
         self.install_parent_dir = install_parent_dir
         self.version = version
-        self.llvm_major_version = get_major_version(version)
-        assert self.llvm_major_version >= 7
+        self.gcc_major_version = get_major_version(version)
+        assert self.gcc_major_version >= 12
         self.user_specified_suffix = user_specified_suffix
         self.skip_auto_suffix = skip_auto_suffix
         self.git_sha1_prefix = None
 
-        self.cmake_executable_path = 'cmake'
-
         self.clean_build = clean_build
         self.build_start_timestamp_str = get_current_timestamp_str()
-        self.use_compiler_wrapper = use_compiler_wrapper
-        self.use_compiler_rt = use_compiler_rt
 
         self.unix_timestamp_for_suffix = None
 
@@ -91,20 +75,19 @@ class ClangBuildConf:
                 raise ValueError(
                     invalid_msg_prefix +
                     f"does not end with '{BUILD_DIR_SUFFIX_WITH_SEPARATOR}'.")
-            if not build_dir_basename.startswith(YB_LLVM_ARCHIVE_NAME_PREFIX):
+            if not build_dir_basename.startswith(YB_GCC_ARCHIVE_NAME_PREFIX):
                 raise ValueError(
                     invalid_msg_prefix +
-                    f"does not start with '{YB_LLVM_ARCHIVE_NAME_PREFIX}'.")
+                    f"does not start with '{YB_GCC_ARCHIVE_NAME_PREFIX}'.")
             self.tag_override = build_dir_basename[
-                len(YB_LLVM_ARCHIVE_NAME_PREFIX):-len(BUILD_DIR_SUFFIX_WITH_SEPARATOR)]
+                len(YB_GCC_ARCHIVE_NAME_PREFIX):-len(BUILD_DIR_SUFFIX_WITH_SEPARATOR)]
         else:
             self.unix_timestamp_for_suffix = str(int(time.time()))
 
         self.parallelism = parallelism
         self.target_arch = target_arch
-        self.openmp_enabled = openmp_enabled
 
-    def get_llvm_build_parent_dir(self) -> str:
+    def get_gcc_build_parent_dir(self) -> str:
         return os.path.join(
             self.install_parent_dir,
             self.get_install_dir_basename() + BUILD_DIR_SUFFIX_WITH_SEPARATOR)
@@ -120,7 +103,6 @@ class ClangBuildConf:
                 component for component in [
                     self.unix_timestamp_for_suffix,
                     self.git_sha1_prefix or GIT_SHA1_PLACEHOLDER_STR,
-                    None if self.use_compiler_rt else 'no-compiler-rt',
                     self.user_specified_suffix,
                     sys_conf.short_os_name_and_version(),
                     sys_conf.architecture
@@ -132,24 +114,24 @@ class ClangBuildConf:
         return 'v%s%s' % (self.version, top_dir_suffix)
 
     def get_install_dir_basename(self) -> str:
-        return YB_LLVM_ARCHIVE_NAME_PREFIX + self.get_tag()
+        return YB_GCC_ARCHIVE_NAME_PREFIX + self.get_tag()
 
     def get_final_install_dir(self) -> str:
         return os.path.join(
             self.install_parent_dir,
             self.get_install_dir_basename())
 
-    def get_llvm_build_info_dir(self) -> str:
-        return os.path.join(self.get_final_install_dir(), 'etc', 'yb-llvm-build-info')
+    def get_gcc_build_info_dir(self) -> str:
+        return os.path.join(self.get_final_install_dir(), 'etc', 'yb-gcc-build-info')
 
-    def get_llvm_project_clone_dir(self) -> str:
-        return os.path.join(self.get_llvm_build_parent_dir(), LLVM_PROJECT_CLONE_REL_PATH)
+    def get_gcc_clone_dir(self) -> str:
+        return os.path.join(self.get_gcc_build_parent_dir(), GCC_CLONE_REL_PATH)
 
     def set_git_sha1(self, git_sha1: str) -> None:
-        old_build_parent_dir = self.get_llvm_build_parent_dir()
+        old_build_parent_dir = self.get_gcc_build_parent_dir()
 
         self.git_sha1_prefix = git_sha1[:GIT_SHA1_PREFIX_LENGTH]
         logging.info("Git SHA1: %s", git_sha1)
         logging.info("Using git SHA1 prefix: %s", self.git_sha1_prefix)
-        logging.info("Renaming %s -> %s", old_build_parent_dir, self.get_llvm_build_parent_dir())
-        os.rename(old_build_parent_dir, self.get_llvm_build_parent_dir())
+        logging.info("Renaming %s -> %s", old_build_parent_dir, self.get_gcc_build_parent_dir())
+        os.rename(old_build_parent_dir, self.get_gcc_build_parent_dir())

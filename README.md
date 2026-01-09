@@ -1,8 +1,11 @@
-# build-clang
+# build-gcc
 
-A set of scripts to build and package LLVM/Clang to be used to build YugabyteDB code.
+A set of scripts to build and package GCC to be used to build YugabyteDB code.
 
-# Links
+## Example Usage
 
-- https://stackoverflow.com/questions/51713120/how-to-build-clang-with-libc-as-default-via-llvms-build-docker-image-sh
-- https://github.com/matthiaskrgr/llvm_bootstrap/blob/master/build_9_0.sh
+```
+bin/build_gcc.sh --gcc_version=12
+```
+
+The full version to be built is specified in src/build_gcc/constants.py.

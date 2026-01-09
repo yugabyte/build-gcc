@@ -3,7 +3,7 @@
 set -euo pipefail
 
 set_pythonpath() {
-  export PYTHONPATH=$build_clang_project_root/src
+  export PYTHONPATH=$build_gcc_root/src
 }
 
 is_apple_silicon() {
@@ -21,9 +21,9 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
   exit 1
 fi
 
-build_clang_project_root=$( cd "${BASH_SOURCE[0]%/*}" && cd .. && pwd )
+build_gcc_root=$( cd "${BASH_SOURCE[0]%/*}" && cd .. && pwd )
 
-"${build_clang_project_root}/bin/update-yugabyte-bash-common.sh"
+"${build_gcc_root}/bin/update-yugabyte-bash-common.sh"
 
 # shellcheck source=yugabyte-bash-common/src/yugabyte-bash-common.sh
-. "$build_clang_project_root/yugabyte-bash-common/src/yugabyte-bash-common.sh"
+. "$build_gcc_root/yugabyte-bash-common/src/yugabyte-bash-common.sh"

@@ -5,7 +5,7 @@ import sys
 
 from typing import List
 
-from build_clang.helpers import run_cmd, ChangeDir, BUILD_CLANG_SCRIPTS_ROOT_PATH
+from build_gcc.helpers import run_cmd, ChangeDir, BUILD_GCC_SCRIPTS_ROOT_PATH
 
 
 def build_remotely(
@@ -24,7 +24,7 @@ def build_remotely(
     if remote_mkdir:
         run_ssh_cmd(['mkdir -p %s' % quoted_remote_path])
 
-    with ChangeDir(BUILD_CLANG_SCRIPTS_ROOT_PATH):
+    with ChangeDir(BUILD_GCC_SCRIPTS_ROOT_PATH):
         excluded_files_str = subprocess.check_output(
             ['git', '-C', '.', 'ls-files', '--exclude-standard', '-oi', '--directory'])
         assert os.path.isdir('.git')
@@ -41,7 +41,7 @@ def build_remotely(
             '.',
             '%s:%s' % (remote_server, remote_build_scripts_path)])
 
-        remote_bash_script = 'cd %s && bin/build_clang.sh %s' % (
+        remote_bash_script = 'cd %s && bin/build_gcc.sh %s' % (
             quoted_remote_path,
             ' '.join(shlex.quote(arg) for arg in sys.argv[1:])
         )

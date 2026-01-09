@@ -2,14 +2,14 @@
 
 import logging
 
-from build_clang.clang_builder import ClangBuilder
+from build_gcc.gcc_builder import GCCBuilder
 
 
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="[%(filename)s:%(lineno)d] %(asctime)s %(levelname)s: %(message)s")
-    builder = ClangBuilder()
+    builder = GCCBuilder()
     builder.parse_args()
     builder.run()
 

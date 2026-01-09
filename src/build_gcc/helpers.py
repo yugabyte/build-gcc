@@ -14,18 +14,18 @@ from typing import List, Any, Dict, Optional, Union
 from datetime import datetime
 
 
-BUILD_CLANG_SCRIPTS_ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(
+BUILD_GCC_SCRIPTS_ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 
 
-def _validate_build_clang_scripts_root_path() -> None:
+def _validate_build_gcc_scripts_root_path() -> None:
     for sub_dir in [
         'bin',
         'src',
         'venv',
         'yugabyte-bash-common'
     ]:
-        dir_that_must_exist = os.path.join(BUILD_CLANG_SCRIPTS_ROOT_PATH, sub_dir)
+        dir_that_must_exist = os.path.join(BUILD_GCC_SCRIPTS_ROOT_PATH, sub_dir)
         if not os.path.isdir(dir_that_must_exist):
             raise IOError("Directory does not exist: %s" % dir_that_must_exist)
 
@@ -75,7 +75,7 @@ def rm_rf(dir_path: str) -> None:
         subprocess.check_call(['rm', '-rf', dir_path])
 
 
-_validate_build_clang_scripts_root_path()
+_validate_build_gcc_scripts_root_path()
 
 
 def compute_sha256_checksum(file_path: str) -> str:
@@ -190,26 +190,12 @@ def get_rpath_flag(rpath_dir: str) -> str:
     return f'-Wl,-rpath={rpath_dir}'
 
 
-def to_cmake_option(v: Union[bool, str]) -> str:
-    if isinstance(v, str):
-        return v
-    if v is True:
-        return 'ON'
-    if v is False:
-        return 'OFF'
-    raise ValueError("Cannot convert to a CMake option value: %s" % v)
-
-
 def make_file_executable(file_path: str) -> None:
     """
     Makes the given file executable by owner.
     """
     current_stat = os.stat(file_path)
     os.chmod(file_path, current_stat.st_mode | stat.S_IXUSR)
-
-
-def cmake_vars_to_args(vars: Dict[str, str]) -> List[str]:
-    return ['-D%s=%s' % (k, v) for (k, v) in vars.items()]
 
 
 def get_major_version(version: str) -> int:
