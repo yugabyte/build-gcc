@@ -16,14 +16,14 @@ exit_handler() {
 }
 
 do_build() {
-  yb_activate_virtualenv "$build_clang_project_root"
+  yb_activate_virtualenv "$build_gcc_root"
 
   set_pythonpath
 
   set +u  # Because args could be empty.
   (
     set -x
-    python3 "$build_clang_project_root/src/build_clang/build_clang_main.py" "${args[@]}"
+    python3 "$build_gcc_root/src/build_gcc/build_gcc_main.py" "${args[@]}"
   )
   set -u
 }
@@ -64,7 +64,7 @@ if [[ "$is_help" == "true" ]]; then
 else
   log_dir=~/logs
   mkdir -p "$log_dir"
-  log_path=$log_dir/build_clang_$( date +%Y-%m-%dT%H_%M_%S ).log
+  log_path=$log_dir/build_gcc_$( date +%Y-%m-%dT%H_%M_%S ).log
   trap exit_handler EXIT
   echo >&2 "Logging to $log_path"
   do_build 2>&1 | tee "$log_path"

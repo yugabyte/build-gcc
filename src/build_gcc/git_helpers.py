@@ -4,7 +4,7 @@ import pathlib
 import logging
 import sys
 
-from build_clang.helpers import run_cmd, ChangeDir
+from build_gcc.helpers import run_cmd, ChangeDir
 from typing import Optional
 
 
