@@ -27,18 +27,33 @@ DEFAULT_INSTALL_PARENT_DIR = '/opt/yb-build/gcc'
 # Relative path to the directory where we clone the GCC source code.
 GCC_CLONE_REL_PATH = os.path.join('src', 'gcc')
 
+# Relative path to the directory where we clone the binutils source code.
+BINUTILS_CLONE_REL_PATH = os.path.join('src', 'binutils')
+
+# Relative path to the directory where we combine GCC and binutils.
+COMBINED_TREE_REL_PATH = os.path.join('src', 'combined')
+
 GIT_SHA1_PLACEHOLDER_STR = 'GIT_SHA1_PLACEHOLDER'
 GIT_SHA1_PLACEHOLDER_STR_WITH_SEPARATORS = (
     NAME_COMPONENT_SEPARATOR + GIT_SHA1_PLACEHOLDER_STR + NAME_COMPONENT_SEPARATOR)
 
 GCC_VERSION_MAP = {
     '12': '12.2.0',
-    '13': '13.4.0',
+    '13': '13.2.0',
     '14': '14.3.0',
     '15': '15.2.0',
 }
 
-DEFAULT_GITHUB_ORG = 'gcc-mirror'
+DEFAULT_GCC_GIT = 'git://gcc.gnu.org/git/gcc.git'
+
+BINUTILS_VERSION_MAP = {
+    '12': '2.38',
+    '13': '2.40',
+    '14': '2.43',
+    '15': '2.45',
+}
+
+DEFAULT_BINUTILS_GIT = 'git://sourceware.org/git/binutils-gdb.git'
 
 BUILD_GCC_SCRIPTS_ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))

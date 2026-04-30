@@ -16,13 +16,16 @@ from build_gcc.constants import (
     GIT_SHA1_PLACEHOLDER_STR,
     NAME_COMPONENT_SEPARATOR,
     GCC_CLONE_REL_PATH,
+    BINUTILS_CLONE_REL_PATH,
+    COMBINED_TREE_REL_PATH,
     GIT_SHA1_PREFIX_LENGTH,
 )
 
 
 class GCCBuildConf:
     install_parent_dir: str
-    version: str
+    gcc_version: str
+    binutils_version: str
     gcc_major_version: int
     user_specified_suffix: Optional[str]
     skip_auto_suffix: bool
@@ -45,7 +48,8 @@ class GCCBuildConf:
     def __init__(
             self,
             install_parent_dir: str,
-            version: str,
+            gcc_version: str,
+            binutils_version: str,
             user_specified_suffix: Optional[str],
             skip_auto_suffix: bool,
             clean_build: bool,
@@ -53,8 +57,9 @@ class GCCBuildConf:
             parallelism: Optional[int],
             target_arch: str) -> None:
         self.install_parent_dir = install_parent_dir
-        self.version = version
-        self.gcc_major_version = get_major_version(version)
+        self.gcc_version = gcc_version
+        self.binutils_version = binutils_version
+        self.gcc_major_version = get_major_version(gcc_version)
         assert self.gcc_major_version >= 12
         self.user_specified_suffix = user_specified_suffix
         self.skip_auto_suffix = skip_auto_suffix
@@ -111,7 +116,7 @@ class GCCBuildConf:
             top_dir_suffix = NAME_COMPONENT_SEPARATOR + NAME_COMPONENT_SEPARATOR.join(
                     components)
 
-        return 'v%s%s' % (self.version, top_dir_suffix)
+        return 'v%s%s' % (self.gcc_version, top_dir_suffix)
 
     def get_install_dir_basename(self) -> str:
         return YB_GCC_ARCHIVE_NAME_PREFIX + self.get_tag()
@@ -126,6 +131,12 @@ class GCCBuildConf:
 
     def get_gcc_clone_dir(self) -> str:
         return os.path.join(self.get_gcc_build_parent_dir(), GCC_CLONE_REL_PATH)
+
+    def get_binutils_clone_dir(self) -> str:
+        return os.path.join(self.get_gcc_build_parent_dir(), BINUTILS_CLONE_REL_PATH)
+
+    def get_combined_tree_dir(self) -> str:
+        return os.path.join(self.get_gcc_build_parent_dir(), COMBINED_TREE_REL_PATH)
 
     def set_git_sha1(self, git_sha1: str) -> None:
         old_build_parent_dir = self.get_gcc_build_parent_dir()
