@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import git
 import atexit
+import shutil
 import time
 import platform
 
@@ -13,6 +14,8 @@ from sys_detection import is_linux, is_macos
 
 from build_gcc.constants import (
     GCC_CLONE_REL_PATH,
+    BINUTILS_CLONE_REL_PATH,
+    COMBINED_TREE_REL_PATH,
     GIT_SHA1_PLACEHOLDER_STR_WITH_SEPARATORS,
     YB_GCC_ARCHIVE_NAME_PREFIX,
     BUILD_GCC_SCRIPTS_ROOT_PATH,
@@ -41,23 +44,20 @@ class GCCBuilder:
     def parse_args(self) -> None:
         self.args, self.build_conf = parse_args()
 
-    def clone_gcc_source_code(self) -> None:
-        gcc_src_path = self.build_conf.get_gcc_clone_dir()
-        logging.info(f"Cloning GCC code to {gcc_src_path}")
+    def clone_source_code(self, src_path: str, tag_we_want: str, clone_rel_path: str,
+                          repo_url: str) -> None:
+        logging.info(f"Cloning GCC code to {src_path}")
 
         mkdir_p('/opt/yb-build/gcc')
         find_cmd = [
             'find', '/opt/yb-build/gcc', '-mindepth', '3', '-maxdepth', '3',
-            '-wholename', os.path.join('*', GCC_CLONE_REL_PATH)
+            '-wholename', os.path.join('*', clone_rel_path)
         ]
-        logging.info("Searching for existing GCC source directories using command: %s",
+        logging.info("Searching for existing source directories using command: %s",
                      ' '.join([shlex.quote(item) for item in find_cmd]))
         existing_src_dirs = subprocess.check_output(find_cmd).decode('utf-8').split('\n')
 
-        tag_we_want = 'releases/gcc-%s' % self.build_conf.version
-
         existing_dir_to_use: Optional[str] = None
-        gcc_repo_url = f'https://github.com/{self.args.github_org}/gcc.git'
         for existing_src_dir in existing_src_dirs:
             existing_src_dir = existing_src_dir.strip()
             if not existing_src_dir:
@@ -86,23 +86,23 @@ class GCCBuilder:
                 break
         if not existing_dir_to_use:
             logging.info("Did not find an existing checkout of tag %s, will clone %s",
-                         tag_we_want, gcc_repo_url)
+                         tag_we_want, repo_url)
 
         if GIT_SHA1_PLACEHOLDER_STR_WITH_SEPARATORS in os.path.basename(
-                os.path.dirname(os.path.dirname(gcc_src_path))):
+                os.path.dirname(os.path.dirname(src_path))):
             def remove_dir_with_placeholder_in_name() -> None:
-                if os.path.exists(gcc_src_path):
-                    logging.info("Removing directory %s", gcc_src_path)
-                    subprocess.call(['rm', '-rf', gcc_src_path])
+                if os.path.exists(src_path):
+                    logging.info("Removing directory %s", src_path)
+                    subprocess.call(['rm', '-rf', src_path])
                 else:
                     logging.warning("Directory %s does not exist, nothing to remove",
-                                    gcc_src_path)
+                                    src_path)
             atexit.register(remove_dir_with_placeholder_in_name)
 
         git_clone_tag(
-            gcc_repo_url if existing_dir_to_use is None else existing_dir_to_use,
+            repo_url if existing_dir_to_use is None else existing_dir_to_use,
             tag_we_want,
-            gcc_src_path)
+            src_path)
 
     def run(self) -> None:
         if os.getenv('BUILD_GCC_REMOTELY') == '1' and not self.args.local_build:
@@ -128,7 +128,27 @@ class GCCBuilder:
             if self.args.existing_build_dir:
                 logging.info("Not cloning the code, assuming it has already been done.")
             else:
-                self.clone_gcc_source_code()
+                self.clone_source_code(
+                    self.build_conf.get_binutils_clone_dir(),
+                    'binutils-%s' % self.build_conf.binutils_version.replace('.', '_'),
+                    BINUTILS_CLONE_REL_PATH,
+                    self.args.binutils_repo)
+                self.clone_source_code(
+                    self.build_conf.get_gcc_clone_dir(),
+                    'releases/gcc-%s' % self.build_conf.gcc_version,
+                    GCC_CLONE_REL_PATH,
+                    self.args.gcc_repo)
+
+                # Copy binutils, then GCC over it, to ensure GCC overrides for conflicting files.
+                shutil.copytree(
+                    self.build_conf.get_binutils_clone_dir(),
+                    self.build_conf.get_combined_tree_dir(),
+                    dirs_exist_ok=False)
+                shutil.copytree(
+                    self.build_conf.get_gcc_clone_dir(),
+                    self.build_conf.get_combined_tree_dir(),
+                    dirs_exist_ok=True)
+
                 mkdir_p(self.build_conf.get_gcc_build_info_dir())
 
             if not self.args.skip_auto_suffix:
@@ -136,14 +156,14 @@ class GCCBuilder:
                 self.build_conf.set_git_sha1(git_sha1)
                 logging.info(
                     "Final GCC code directory: %s",
-                    self.build_conf.get_gcc_clone_dir())
+                    self.build_conf.get_combined_tree_dir())
 
             logging.info(
                 "GCC will be built and installed to: %s",
                 self.build_conf.get_final_install_dir())
 
             save_git_log_to_file(
-                self.build_conf.get_gcc_clone_dir(),
+                self.build_conf.get_combined_tree_dir(),
                 os.path.join(
                     self.build_conf.get_gcc_build_info_dir(), 'gcc_git_log.txt'))
 
@@ -223,7 +243,7 @@ class GCCBuilder:
         if parallelism is None:
             parallelism = os.cpu_count()
 
-        with ChangeDir(self.build_conf.get_gcc_clone_dir()):
+        with ChangeDir(self.build_conf.get_combined_tree_dir()):
             logging.info("Running download_prerequisites")
             run_cmd(get_arch_switch_cmd_prefix(self.build_conf.target_arch) + [
                 os.path.join('contrib', 'download_prerequisites')
@@ -244,7 +264,7 @@ class GCCBuilder:
 
             logging.info("Running configure")
             run_cmd(get_arch_switch_cmd_prefix(self.build_conf.target_arch) + [
-                os.path.join(self.build_conf.get_gcc_clone_dir(), 'configure')
+                os.path.join(self.build_conf.get_combined_tree_dir(), 'configure')
             ] + configure_args)
 
             logging.info("Building GCC")

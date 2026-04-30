@@ -9,8 +9,10 @@ from sys_detection import is_linux
 
 from build_gcc.constants import (
     DEFAULT_INSTALL_PARENT_DIR,
-    DEFAULT_GITHUB_ORG,
+    DEFAULT_GCC_GIT,
+    DEFAULT_BINUTILS_GIT,
     GCC_VERSION_MAP,
+    BINUTILS_VERSION_MAP,
 )
 from build_gcc.helpers import get_major_version
 from build_gcc.gcc_build_conf import GCCBuildConf
@@ -54,8 +56,12 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help='Suffix to append to the top-level directory that we will use for the build. ')
     parser.add_argument(
         '--gcc_version',
-        help='GCC version to build, e.g. 12, 13, 12.5.0, etc',
+        help='GCC version to build, e.g. 12, 13, 12.5.0, etc.',
         default='15')
+    parser.add_argument(
+        '--binutils_version',
+        help='binutils version to build, e.g. 2.39.',
+        default='')
     parser.add_argument(
         '--skip_auto_suffix',
         help='Do not add automatic suffixes based on Git commit SHA1 and current time to the '
@@ -81,9 +87,14 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help='Set the parallelism level for Ninja builds'
     )
     parser.add_argument(
-        '--github_org',
-        help='GitHub organization to use in the clone URL. Default: ' + DEFAULT_GITHUB_ORG,
-        default=DEFAULT_GITHUB_ORG
+        '--gcc-repo',
+        help='git repository for GCC. Default: ' + DEFAULT_GCC_GIT,
+        default=DEFAULT_GCC_GIT
+    )
+    parser.add_argument(
+        '--binutils-repo',
+        help='git repository for binutils. Default: ' + DEFAULT_BINUTILS_GIT,
+        default=DEFAULT_BINUTILS_GIT
     )
     parser.add_argument(
         '--skip_build',
@@ -122,6 +133,13 @@ def parse_args() -> Tuple[argparse.Namespace, GCCBuildConf]:
 
     logging.info("GCC major version: %d", gcc_major_version)
 
+    if args.binutils_version == '':
+        args.binutils_version  = BINUTILS_VERSION_MAP.get(str(gcc_major_version), '')
+    if args.binutils_version == '':
+        raise ValueError("Don't know what binutils version to use")
+
+    logging.info("binutils version: %s", args.binutils_version)
+
     target_arch_arg = args.target_arch
     target_arch_from_env = os.environ.get('YB_TARGET_ARCH')
     current_arch = platform.machine()
@@ -142,7 +160,8 @@ def parse_args() -> Tuple[argparse.Namespace, GCCBuildConf]:
 
     build_conf = GCCBuildConf(
         install_parent_dir=args.install_parent_dir,
-        version=args.gcc_version,
+        gcc_version=args.gcc_version,
+        binutils_version=args.binutils_version,
         user_specified_suffix=args.top_dir_suffix,
         skip_auto_suffix=args.skip_auto_suffix,
         clean_build=args.clean,
